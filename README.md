@@ -71,32 +71,34 @@ make deploy ENV=dev      # deploys to development environment
 make deploy ENV=prod     # deploys to production environment
 ```
 Makefile Commands
+
 Command	Description
+
 make help	Show available commands
+
 make deploy ENV=dev	Full deployment (build, push, terraform apply, health check)
+
 make tf-apply	Apply Terraform changes for current ENV
+
 make build-push	Build Docker images and push to ECR
+
 make ansible-bastion	Configure Bastion host
+
 make ansible-app	Configure application servers (needs Terraform outputs)
+
 make backup	Run database backup for current ENV
+
 make health	Run health check
+
 make monitor	Run system monitoring script
+
 make clean	Remove temporary files
+
 Environment Variables
+
 The Makefile uses ENV (default: dev) to target the appropriate environment. Terraform variables are set in terraform/environments/<env>/terraform.tfvars.
 
-Project Structure
-text
-ecommerce-platform/
-├── .github/workflows/   # GitHub Actions CI/CD pipelines
-├── ansible/             # Ansible playbooks and roles
-├── app/                 # Application code (backend + frontend)
-├── scripts/             # Bash scripts (backup, restore, health check, etc.)
-├── terraform/           # Terraform modules and environments
-│   ├── modules/         # Reusable modules (networking, alb, asg, rds, ...)
-│   └── environments/    # Environment-specific configurations
-├── Makefile             # Project management
-└── README.md            # This file
+
 CI/CD
 Development: Pushes to develop automatically deploy to the dev environment.
 
@@ -105,6 +107,7 @@ Production: Pushes to main trigger deployment to prod (requires manual approval 
 All workflows build Docker images, push them to ECR, run Terraform, and execute health checks.
 
 Monitoring & Backup
+
 CloudWatch: Dashboards, alarms for CPU, 5xx errors, and RDS connections.
 
 Backup: Automated daily database backups stored in S3 (30‑day retention).
