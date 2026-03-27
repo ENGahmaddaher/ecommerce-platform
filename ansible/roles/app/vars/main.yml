@@ -1,0 +1,3 @@
+app_port: 5000
+db_name: ecommerce
+db_user: postgres

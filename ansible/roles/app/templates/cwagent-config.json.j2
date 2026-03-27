@@ -1,0 +1,53 @@
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "run_as_user": "root"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/app/*.log",
+            "log_group_name": "/{{ environment }}/application",
+            "log_stream_name": "{instance_id}",
+            "timestamp_format": "%Y-%m-%d %H:%M:%S"
+          },
+          {
+            "file_path": "/var/log/docker-containers.log",
+            "log_group_name": "/{{ environment }}/docker",
+            "log_stream_name": "{instance_id}",
+            "timestamp_format": "%Y-%m-%dT%H:%M:%S"
+          }
+        ]
+      }
+    }
+  },
+  "metrics": {
+    "metrics_collected": {
+      "mem": {
+        "measurement": ["mem_used_percent", "mem_free", "mem_total"],
+        "metrics_collection_interval": 60
+      },
+      "cpu": {
+        "resources": ["*"],
+        "measurement": ["cpu_usage_idle", "cpu_usage_iowait", "cpu_usage_user", "cpu_usage_system"],
+        "totalcpu": false,
+        "metrics_collection_interval": 60
+      },
+      "disk": {
+        "resources": ["/", "/var"],
+        "measurement": ["disk_used_percent", "disk_free", "disk_total"],
+        "metrics_collection_interval": 60
+      },
+      "netstat": {
+        "measurement": ["tcp_established", "tcp_time_wait", "tcp_listen"],
+        "metrics_collection_interval": 60
+      },
+      "docker": {
+        "measurement": ["cpu_percent", "mem_used", "mem_limit", "mem_percent"],
+        "metrics_collection_interval": 60
+      }
+    }
+  }
+}

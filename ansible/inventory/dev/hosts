@@ -1,10 +1,11 @@
 [bastion]
-bastion-dev ansible_host=<BASTION_IP> ansible_user=admin
+bastion-dev ansible_host=54.123.45.67 ansible_user=admin
 
 [app_servers]
-app-dev-1 ansible_host=<APP_IP_1> ansible_user=admin
-app-dev-2 ansible_host=<APP_IP_2> ansible_user=admin
+app-dev-1 ansible_host=10.0.10.5 ansible_user=admin
+app-dev-2 ansible_host=10.0.10.6 ansible_user=admin
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
 environment=dev
+aws_region=us-east-1

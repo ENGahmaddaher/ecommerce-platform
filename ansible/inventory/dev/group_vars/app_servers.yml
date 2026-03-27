@@ -1,0 +1,6 @@
+---
+ecr_repo_backend: "123456789012.dkr.ecr.us-east-1.amazonaws.com/ecommerce-backend"
+ecr_repo_frontend: "123456789012.dkr.ecr.us-east-1.amazonaws.com/ecommerce-frontend"
+backend_image_tag: latest
+frontend_image_tag: latest
+db_host: "dev-db.abc123.us-east-1.rds.amazonaws.com"

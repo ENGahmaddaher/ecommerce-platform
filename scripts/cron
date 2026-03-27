@@ -1,0 +1,15 @@
+# تحرير crontab للمستخدم root
+sudo crontab -e
+
+# إضافة السطور:
+# نسخ احتياطي يومي الساعة 2 صباحاً
+0 2 * * * /home/admin/ecommerce-platform/scripts/backup.sh prod >> /var/log/backup.log 2>&1
+
+# تدوير السجلات يومي الساعة 3 صباحاً
+0 3 * * * /home/admin/ecommerce-platform/scripts/rotate-logs.sh >> /var/log/rotate-logs.log 2>&1
+
+# مراقبة كل ساعة
+0 * * * * /home/admin/ecommerce-platform/scripts/monitoring.sh prod >> /var/log/monitoring.log 2>&1
+
+# فحص صحي كل 5 دقائق
+*/5 * * * * /home/admin/ecommerce-platform/scripts/health-check.sh prod >> /var/log/health-check.log 2>&1

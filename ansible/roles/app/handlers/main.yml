@@ -1,0 +1,8 @@
+---
+- name: restart app containers
+  docker_container:
+    name: "{{ item }}"
+    state: restarted
+  loop:
+    - backend
+    - frontend

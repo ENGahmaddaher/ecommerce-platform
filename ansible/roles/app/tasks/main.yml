@@ -4,13 +4,48 @@
     path: /opt/app
     state: directory
     mode: '0755'
+
 - name: Copy environment template
   template:
     src: env.j2
     dest: /opt/app/.env
     mode: '0640'
+
 - name: Set up log rotation
   copy:
-    src: logrotate.conf
+    content: |
+      /var/log/app/*.log {
+        daily
+        rotate 7
+        compress
+        delaycompress
+        missingok
+        notifempty
+        create 644 root root
+        postrotate
+          docker kill --signal=USR1 backend 2>/dev/null || true
+        endscript
+      }
     dest: /etc/logrotate.d/application
     mode: '0644'
+
+- name: Install AWS CloudWatch Agent
+  shell: |
+    wget -q https://s3.amazonaws.com/amazoncloudwatch-agent/debian/amd64/latest/amazon-cloudwatch-agent.deb
+    dpkg -i -E amazon-cloudwatch-agent.deb 2>/dev/null || true
+    rm amazon-cloudwatch-agent.deb
+  args:
+    creates: /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent
+  when: ansible_os_family == "Debian"
+
+- name: Configure CloudWatch Agent
+  template:
+    src: cwagent-config.json.j2
+    dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    mode: '0644'
+  when: ansible_os_family == "Debian"
+
+- name: Start CloudWatch Agent
+  shell: |
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+  when: ansible_os_family == "Debian"

@@ -1,24 +1,24 @@
-variable "environment" {}
+variable "environment" { type = string }
 variable "private_subnet_ids" { type = list(string) }
-variable "target_group_arn" {}
-variable "ami_id" {}
-variable "instance_type" {}
-variable "key_name" {}
-variable "app_port" { default = 5000 }
-variable "aws_region" { default = "us-east-1" }
-variable "ecr_repo_backend" {}
-variable "ecr_repo_frontend" {}
-variable "backend_image_tag" { default = "latest" }
-variable "frontend_image_tag" { default = "latest" }
-variable "secrets_arns" { type = list(string) }
-variable "app_security_group_id" {}
-variable "db_host" { default = "" }
-variable "db_name" { default = "ecommerce" }
-variable "db_user" { default = "postgres" }
-variable "min_size" { default = 1 }
-variable "max_size" { default = 5 }
-variable "desired_capacity" { default = 1 }
-variable "root_volume_size" { default = 20 }
-variable "cpu_scale_up_threshold" { default = 70 }
-variable "cpu_scale_down_threshold" { default = 30 }
-variable "tags" { default = {} }
+variable "target_group_arn" { type = string }
+variable "ami_id" { type = string }
+variable "instance_type" { type = string; default = "t3.micro" }
+variable "key_name" { type = string }
+variable "app_port" { type = number; default = 5000 }
+variable "aws_region" { type = string; default = "us-east-1" }
+variable "ecr_repo_backend" { type = string }
+variable "ecr_repo_frontend" { type = string }
+variable "backend_image_tag" { type = string; default = "latest" }
+variable "frontend_image_tag" { type = string; default = "latest" }
+variable "secrets_arns" { type = list(string); default = [] }
+variable "app_security_group_id" { type = string }
+variable "db_host" { type = string; default = "" }
+variable "db_name" { type = string; default = "ecommerce" }
+variable "db_user" { type = string; default = "postgres" }
+variable "min_size" { type = number; default = 1 }
+variable "max_size" { type = number; default = 3 }
+variable "desired_capacity" { type = number; default = 1 }
+variable "root_volume_size" { type = number; default = 20 }
+variable "cpu_scale_up_threshold" { type = number; default = 70 }
+variable "cpu_scale_down_threshold" { type = number; default = 30 }
+variable "tags" { type = map(string); default = {} }

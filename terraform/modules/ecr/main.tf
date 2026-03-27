@@ -1,18 +1,18 @@
 resource "aws_ecr_repository" "backend" {
   name = "ecommerce-backend"
+  image_tag_mutability = "MUTABLE"
   image_scanning_configuration {
     scan_on_push = true
   }
-  image_tag_mutability = "MUTABLE"
   tags = merge(var.tags, { Name = "ecommerce-backend" })
 }
 
 resource "aws_ecr_repository" "frontend" {
   name = "ecommerce-frontend"
+  image_tag_mutability = "MUTABLE"
   image_scanning_configuration {
     scan_on_push = true
   }
-  image_tag_mutability = "MUTABLE"
   tags = merge(var.tags, { Name = "ecommerce-frontend" })
 }
 

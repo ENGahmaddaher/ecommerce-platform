@@ -1,14 +1,44 @@
-# Global IAM Resources
-# This module creates IAM resources that are shared across environments
+terraform {
+  backend "s3" {
+    bucket         = "ecommerce-terraform-state-global"
+    key            = "iam/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks-global"
+    encrypt        = true
+  }
+}
 
-# IAM Policy for Terraform State Access
-resource "aws_iam_policy" "terraform_state" {
-  name        = "TerraformStateAccess"
-  description = "Policy for accessing Terraform state files"
+provider "aws" {
+  region = var.aws_region
+}
+
+# مستخدم IAM لـ GitHub Actions
+resource "aws_iam_user" "github_actions" {
+  name = "github-actions"
+}
+
+# سياسة تسمح بالإدارة الكاملة لـ ECR, Terraform state, و Secrets Manager
+resource "aws_iam_policy" "github_actions" {
+  name        = "github-actions-policy"
+  description = "Policy for GitHub Actions to deploy infrastructure"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:PutImage"
+        ]
+        Resource = "*"
+      },
       {
         Effect = "Allow"
         Action = [
@@ -18,8 +48,8 @@ resource "aws_iam_policy" "terraform_state" {
           "s3:DeleteObject"
         ]
         Resource = [
-          "arn:aws:s3:::ecommerce-terraform-state",
-          "arn:aws:s3:::ecommerce-terraform-state/*"
+          "arn:aws:s3:::ecommerce-terraform-state-*",
+          "arn:aws:s3:::ecommerce-terraform-state-*/*"
         ]
       },
       {
@@ -29,83 +59,7 @@ resource "aws_iam_policy" "terraform_state" {
           "dynamodb:PutItem",
           "dynamodb:DeleteItem"
         ]
-        Resource = "arn:aws:dynamodb:*:*:table/terraform-locks"
-      }
-    ]
-  })
-}
-
-# IAM Policy for ECR Access
-resource "aws_iam_policy" "ecr_access" {
-  name        = "ECRAccess"
-  description = "Policy for ECR access"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:GetRepositoryPolicy",
-          "ecr:DescribeRepositories",
-          "ecr:ListImages",
-          "ecr:BatchGetImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:PutImage"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# IAM Policy for GitHub Actions
-resource "aws_iam_policy" "github_actions" {
-  name        = "GitHubActionsPolicy"
-  description = "Policy for GitHub Actions CI/CD"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:PutImage"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket",
-          "s3:GetObject",
-          "s3:PutObject"
-        ]
-        Resource = [
-          "arn:aws:s3:::ecommerce-terraform-state",
-          "arn:aws:s3:::ecommerce-terraform-state/*"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:DeleteItem"
-        ]
-        Resource = "arn:aws:dynamodb:*:*:table/terraform-locks"
+        Resource = "arn:aws:dynamodb:*:*:table/terraform-locks-*"
       },
       {
         Effect = "Allow"
@@ -113,14 +67,42 @@ resource "aws_iam_policy" "github_actions" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = "arn:aws:secretsmanager:*:*:secret:*-db-password*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:Describe*",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:CreateTags",
+          "elasticloadbalancing:Describe*",
+          "elasticloadbalancing:Create*",
+          "elasticloadbalancing:Delete*",
+          "elasticloadbalancing:Modify*",
+          "autoscaling:Describe*",
+          "autoscaling:Create*",
+          "autoscaling:Delete*",
+          "autoscaling:Update*",
+          "rds:Describe*",
+          "rds:Create*",
+          "rds:Delete*",
+          "rds:Modify*",
+          "iam:PassRole",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile"
+        ]
+        Resource = "*"
       }
     ]
   })
-}
-
-# IAM User for GitHub Actions (recommended)
-resource "aws_iam_user" "github_actions" {
-  name = "github-actions"
 }
 
 resource "aws_iam_user_policy_attachment" "github_actions" {
@@ -128,22 +110,17 @@ resource "aws_iam_user_policy_attachment" "github_actions" {
   policy_arn = aws_iam_policy.github_actions.arn
 }
 
-# IAM Access Keys for GitHub Actions
+# مفتاح الوصول لـ GitHub Actions
 resource "aws_iam_access_key" "github_actions" {
   user = aws_iam_user.github_actions.name
 }
 
-# Outputs
-output "github_actions_access_key_id" {
+output "access_key_id" {
   value     = aws_iam_access_key.github_actions.id
   sensitive = true
 }
 
-output "github_actions_secret_access_key" {
+output "secret_access_key" {
   value     = aws_iam_access_key.github_actions.secret
   sensitive = true
-}
-
-output "github_actions_user_arn" {
-  value = aws_iam_user.github_actions.arn
 }

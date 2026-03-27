@@ -1,0 +1,20 @@
+# عرض المساعدة
+make help
+
+# نشر بيئة التطوير
+make deploy ENV=dev
+
+# نشر بيئة الإنتاج (تأكد من المتغيرات المناسبة)
+make deploy ENV=prod
+
+# فقط بناء ورفع الصور
+make build-push
+
+# تكوين خوادم التطبيق يدوياً (بعد Terraform)
+make ansible-app
+
+# تشغيل النسخ الاحتياطي لقاعدة البيانات في prod
+make backup ENV=prod
+
+# تدمير بيئة dev
+make tf-destroy ENV=dev

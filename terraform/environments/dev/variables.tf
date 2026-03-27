@@ -3,10 +3,8 @@ variable "vpc_cidr" { default = "10.0.0.0/16" }
 variable "public_subnet_cidrs" { default = ["10.0.1.0/24", "10.0.2.0/24"] }
 variable "private_subnet_cidrs" { default = ["10.0.10.0/24", "10.0.11.0/24"] }
 variable "allowed_ssh_cidrs" { default = ["0.0.0.0/0"] }
-variable "key_name" {}
+variable "key_name" { type = string }
 variable "rds_instance_class" { default = "db.t3.micro" }
 variable "rds_allocated_storage" { default = 20 }
 variable "app_instance_type" { default = "t3.micro" }
 variable "certificate_arn" { default = "" }
-variable "domain_name" { default = "" }
-variable "route53_zone_id" { default = "" }

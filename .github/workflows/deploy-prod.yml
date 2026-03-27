@@ -1,8 +1,12 @@
-name: Deploy to Prod
+name: Deploy to Production
+
 on:
   push:
-    branches: [main]
-    paths: ['app/**', 'terraform/environments/prod/**']
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'terraform/environments/prod/**'
   workflow_dispatch:
 
 env:
@@ -11,41 +15,75 @@ env:
   APP_NAME: ecommerce
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: production   # يتطلب موافقة يدوية إذا تم تفعيلها في إعدادات المستودع
     steps:
-      - uses: actions/checkout@v3
-      - name: Configure AWS
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Login to ECR
+
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-      - name: Build and push Backend
+
+      - name: Build and push Backend image
         run: |
           cd app/backend
-          docker build -t ${{ steps.login-ecr.outputs.registry }}/ecommerce-backend:${{ github.sha }} .
-          docker push ${{ steps.login-ecr.outputs.registry }}/ecommerce-backend:${{ github.sha }}
-      - name: Build and push Frontend
+          docker build -t ${{ env.APP_NAME }}-backend:${{ github.sha }} .
+          docker tag ${{ env.APP_NAME }}-backend:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-backend:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-backend:${{ github.sha }}
+
+      - name: Build and push Frontend image
         run: |
           cd app/frontend
-          docker build -t ${{ steps.login-ecr.outputs.registry }}/ecommerce-frontend:${{ github.sha }} .
-          docker push ${{ steps.login-ecr.outputs.registry }}/ecommerce-frontend:${{ github.sha }}
+          docker build -t ${{ env.APP_NAME }}-frontend:${{ github.sha }} .
+          docker tag ${{ env.APP_NAME }}-frontend:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-frontend:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-frontend:${{ github.sha }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
+
       - name: Terraform Init
-        run: cd terraform/environments/prod && terraform init
+        run: cd terraform/environments/${{ env.ENVIRONMENT }} && terraform init
+
       - name: Terraform Plan
-        run: cd terraform/environments/prod && terraform plan -out=tfplan -var="backend_image_tag=${{ github.sha }}" -var="frontend_image_tag=${{ github.sha }}"
+        run: |
+          cd terraform/environments/${{ env.ENVIRONMENT }}
+          terraform plan -out=tfplan \
+            -var="backend_image_tag=${{ github.sha }}" \
+            -var="frontend_image_tag=${{ github.sha }}"
+
       - name: Terraform Apply
-        run: cd terraform/environments/prod && terraform apply -auto-approve tfplan
+        run: |
+          cd terraform/environments/${{ env.ENVIRONMENT }}
+          terraform apply -auto-approve tfplan
+
       - name: Health Check
-        run: ./scripts/health-check.sh prod
-      - name: Backup DB
-        run: ./scripts/backup.sh prod
+        run: ./scripts/health-check.sh ${{ env.ENVIRONMENT }}
+
+      - name: Smoke Tests
+        run: |
+          ALB_DNS=$(cd terraform/environments/${{ env.ENVIRONMENT }} && terraform output -raw alb_dns_name)
+          curl -f "http://$ALB_DNS/health" || exit 1
+          curl -f "http://$ALB_DNS/api/products" || exit 1
+
+      - name: Database Backup
+        run: ./scripts/backup.sh ${{ env.ENVIRONMENT }}
+
+      - name: Notify Slack
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_TITLE: "Production Deployment"
+          SLACK_MESSAGE: "Status: ${{ job.status }}\nCommit: ${{ github.sha }}\nEnvironment: ${{ env.ENVIRONMENT }}"
+          SLACK_COLOR: ${{ job.status == 'success' && 'good' || 'danger' }}

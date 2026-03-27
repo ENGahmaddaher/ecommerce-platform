@@ -8,10 +8,21 @@
   tasks:
     - name: Install monitoring tools
       apt:
-        name: [htop, iotop, nload, tmux, git, vim, curl, wget, jq, awscli]
+        name:
+          - htop
+          - iotop
+          - nload
+          - tmux
+          - git
+          - vim
+          - curl
+          - wget
+          - jq
+          - awscli
         state: present
         update_cache: yes
-    - name: Configure SSH
+
+    - name: Configure SSH security
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: "{{ item.regexp }}"
@@ -21,26 +32,35 @@
         - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication no' }
         - { regexp: '^MaxAuthTries', line: 'MaxAuthTries 3' }
       notify: restart sshd
+
     - name: Create admin user
       user:
         name: admin
         groups: sudo
         shell: /bin/bash
         append: yes
-    - name: Add SSH keys (example - replace with actual keys)
-      authorized_key:
-        user: admin
-        key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."  # replace
+
+    - name: Configure MOTD
+      copy:
+        content: |
+          ==========================================
+          Bastion Host - {{ environment }}
+          Authorized access only
+          ==========================================
+        dest: /etc/motd
+
     - name: Enable firewall
       ufw:
         rule: allow
         port: "{{ item }}"
         proto: tcp
       loop: [22, 80, 443]
+
     - name: Enable ufw
       ufw:
         state: enabled
         policy: deny
+
   handlers:
     - name: restart sshd
       service:

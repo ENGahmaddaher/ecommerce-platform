@@ -7,21 +7,41 @@
     - docker
     - app
   tasks:
+    - name: Wait for Docker to be ready
+      wait_for:
+        timeout: 30
+
     - name: Pull latest images
       docker_image:
         name: "{{ item }}"
         source: pull
       loop:
-        - "{{ ecr_repo_backend }}:{{ image_tag }}"
-        - "{{ ecr_repo_frontend }}:{{ image_tag }}"
+        - "{{ ecr_repo_backend }}:{{ backend_image_tag }}"
+        - "{{ ecr_repo_frontend }}:{{ frontend_image_tag }}"
       notify: restart containers
-    - name: Run backend
+
+    - name: Stop and remove old containers
+      docker_container:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - backend
+        - frontend
+      ignore_errors: yes
+
+    - name: Create network
+      docker_network:
+        name: app-network
+        state: present
+
+    - name: Run backend container
       docker_container:
         name: backend
-        image: "{{ ecr_repo_backend }}:{{ image_tag }}"
+        image: "{{ ecr_repo_backend }}:{{ backend_image_tag }}"
         state: started
         restart_policy: always
-        ports: ["5000:5000"]
+        ports:
+          - "5000:5000"
         env:
           ENVIRONMENT: "{{ environment }}"
           DB_HOST: "{{ db_host }}"
@@ -31,27 +51,43 @@
           AWS_REGION: "{{ aws_region }}"
         networks:
           - name: app-network
-    - name: Run frontend
+        log_driver: "json-file"
+        log_options:
+          max-size: "10m"
+          max-file: "3"
+
+    - name: Run frontend container
       docker_container:
         name: frontend
-        image: "{{ ecr_repo_frontend }}:{{ image_tag }}"
+        image: "{{ ecr_repo_frontend }}:{{ frontend_image_tag }}"
         state: started
         restart_policy: always
-        ports: ["80:80"]
+        ports:
+          - "80:80"
         networks:
           - name: app-network
-        links: ["backend:backend"]
+        links:
+          - "backend:backend"
+        log_driver: "json-file"
+        log_options:
+          max-size: "10m"
+          max-file: "3"
+
     - name: Health check
       uri:
         url: "http://localhost:5000/health"
         return_content: yes
+        status_code: 200
       register: health
       until: "'healthy' in health.content"
       retries: 10
-      delay: 5
+      delay: 10
+
   handlers:
     - name: restart containers
       docker_container:
         name: "{{ item }}"
         state: restarted
-      loop: [backend, frontend]
+      loop:
+        - backend
+        - frontend

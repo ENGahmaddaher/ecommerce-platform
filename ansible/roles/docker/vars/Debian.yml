@@ -3,6 +3,7 @@ docker_packages:
   - docker-ce-cli
   - containerd.io
   - docker-compose-plugin
+
 docker_users:
   - admin
   - ubuntu

@@ -3,18 +3,34 @@
   apt:
     update_cache: yes
     cache_valid_time: 3600
+
 - name: Install basic packages
   apt:
-    name: [curl, wget, git, vim, htop, net-tools, ca-certificates, gnupg, lsb-release, python3-pip]
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - net-tools
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-setuptools
+      - unzip
     state: present
-- name: Upgrade packages
+
+- name: Upgrade all packages
   apt:
     upgrade: dist
     autoremove: yes
-- name: Set timezone
+
+- name: Set timezone to UTC
   timezone:
-    name: "{{ timezone | default('UTC') }}"
-- name: Configure sysctl
+    name: UTC
+
+- name: Configure sysctl for better performance
   sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
@@ -24,10 +40,22 @@
     - { name: 'net.ipv4.tcp_tw_reuse', value: 1 }
     - { name: 'net.ipv4.tcp_fin_timeout', value: 15 }
     - { name: 'net.core.somaxconn', value: 1024 }
-- name: Increase file limits
+    - { name: 'net.ipv4.tcp_max_syn_backlog', value: 4096 }
+
+- name: Increase file descriptor limit
   lineinfile:
     path: /etc/security/limits.conf
     line: "{{ item }}"
   loop:
     - '* soft nofile 65536'
     - '* hard nofile 65536'
+    - 'root soft nofile 65536'
+    - 'root hard nofile 65536'
+
+- name: Create log directory
+  file:
+    path: /var/log/app
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
