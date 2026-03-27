@@ -1,0 +1,57 @@
+---
+- name: Configure Application Servers
+  hosts: app_servers
+  become: yes
+  roles:
+    - common
+    - docker
+    - app
+  tasks:
+    - name: Pull latest images
+      docker_image:
+        name: "{{ item }}"
+        source: pull
+      loop:
+        - "{{ ecr_repo_backend }}:{{ image_tag }}"
+        - "{{ ecr_repo_frontend }}:{{ image_tag }}"
+      notify: restart containers
+    - name: Run backend
+      docker_container:
+        name: backend
+        image: "{{ ecr_repo_backend }}:{{ image_tag }}"
+        state: started
+        restart_policy: always
+        ports: ["5000:5000"]
+        env:
+          ENVIRONMENT: "{{ environment }}"
+          DB_HOST: "{{ db_host }}"
+          DB_NAME: "{{ db_name }}"
+          DB_USER: "{{ db_user }}"
+          DB_SECRET_NAME: "{{ environment }}-db-password"
+          AWS_REGION: "{{ aws_region }}"
+        networks:
+          - name: app-network
+    - name: Run frontend
+      docker_container:
+        name: frontend
+        image: "{{ ecr_repo_frontend }}:{{ image_tag }}"
+        state: started
+        restart_policy: always
+        ports: ["80:80"]
+        networks:
+          - name: app-network
+        links: ["backend:backend"]
+    - name: Health check
+      uri:
+        url: "http://localhost:5000/health"
+        return_content: yes
+      register: health
+      until: "'healthy' in health.content"
+      retries: 10
+      delay: 5
+  handlers:
+    - name: restart containers
+      docker_container:
+        name: "{{ item }}"
+        state: restarted
+      loop: [backend, frontend]

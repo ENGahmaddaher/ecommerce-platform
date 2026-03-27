@@ -1,0 +1,51 @@
+name: Deploy to Prod
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'terraform/environments/prod/**']
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ENVIRONMENT: prod
+  APP_NAME: ecommerce
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build and push Backend
+        run: |
+          cd app/backend
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/ecommerce-backend:${{ github.sha }} .
+          docker push ${{ steps.login-ecr.outputs.registry }}/ecommerce-backend:${{ github.sha }}
+      - name: Build and push Frontend
+        run: |
+          cd app/frontend
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/ecommerce-frontend:${{ github.sha }} .
+          docker push ${{ steps.login-ecr.outputs.registry }}/ecommerce-frontend:${{ github.sha }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+      - name: Terraform Init
+        run: cd terraform/environments/prod && terraform init
+      - name: Terraform Plan
+        run: cd terraform/environments/prod && terraform plan -out=tfplan -var="backend_image_tag=${{ github.sha }}" -var="frontend_image_tag=${{ github.sha }}"
+      - name: Terraform Apply
+        run: cd terraform/environments/prod && terraform apply -auto-approve tfplan
+      - name: Health Check
+        run: ./scripts/health-check.sh prod
+      - name: Backup DB
+        run: ./scripts/backup.sh prod

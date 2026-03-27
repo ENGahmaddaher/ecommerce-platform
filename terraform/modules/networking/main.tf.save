@@ -1,0 +1,96 @@
+resource "aws_vpc" "main" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+  tags = {
+    Name = "${var.environment}-vpc"
+  }
+}
+resource "aws_internet_gateway" "igw" {
+vpc_id = aws_vpc.main.id
+tags = {
+ Name = "${var.environmet}-vpc"
+ }
+}
+resource "aws_subnet" "public" {
+vpc_id = aws_vpc.main.id
+cidr_block = "0.0.0.0/0"
+
+
+}
+resource "aws_subnet" "private" {
+vpc_id = aws_vpc.main.id
+cidr_block = "0.0.0.0/0"
+
+}
+resource "aws_security_group" "Sgw" {
+vpc_id = aws_vpc.main.id
+ingress {
+from_port = 80
+to_port  = 80
+protocol = tcp
+cidr_block = "0.0.0.0/0"
+}
+
+}
+
+resource "aws_route_table" {
+subnet_id = aws_subnet.public.id
+
+tags {
+
+
+
+
+
+}
+
+}
+
+varibale "sub" {
+type = map(object({
+cidr = string
+az= string
+
+}))
+default = {
+
+public1 = { 
+ cidr = "10.0.0.0/24" 
+ az = "east-1"
+ }
+public2 = {
+ cidr = "10.0.1.0/24" 
+ az = "east-2"
+ }
+}
+resource "aws_subnet" "public" {
+for_each = var.sub
+cidr_block = each.sub[0].cidr.value
+
+
+map_public_ip_on_launch = true
+
+
+}
+
+
+
+
+
+
+
+
+resource "aws_route_table" {
+ subnet_id = aws_subnet_public.id
+ route {
+ cidr = 0.0.0.0
+ gateway_id = 
+  }
+
+tags = {
+
+ Name= 
+
+}
+}

@@ -1,0 +1,16 @@
+---
+- name: Ensure app directory exists
+  file:
+    path: /opt/app
+    state: directory
+    mode: '0755'
+- name: Copy environment template
+  template:
+    src: env.j2
+    dest: /opt/app/.env
+    mode: '0640'
+- name: Set up log rotation
+  copy:
+    src: logrotate.conf
+    dest: /etc/logrotate.d/application
+    mode: '0644'

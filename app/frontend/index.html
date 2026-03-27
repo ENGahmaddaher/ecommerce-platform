@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Store</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height:100vh; padding:20px; }
+        .container { max-width:1200px; margin:0 auto; background:white; border-radius:10px; box-shadow:0 20px 40px rgba(0,0,0,0.1); overflow:hidden; }
+        header { background:#2c3e50; color:white; padding:20px; text-align:center; }
+        header h1 { font-size:2em; margin-bottom:10px; }
+        .stats { display:flex; justify-content:space-around; background:#34495e; padding:15px; color:white; }
+        .stat-card { text-align:center; }
+        .stat-number { font-size:1.5em; font-weight:bold; color:#f1c40f; }
+        .main-content { display:flex; padding:20px; gap:20px; flex-wrap:wrap; }
+        .products { flex:2; }
+        .cart { flex:1; background:#f8f9fa; border-radius:10px; padding:20px; position:sticky; top:20px; height:fit-content; }
+        .product-card { background:white; border:1px solid #e0e0e0; border-radius:10px; padding:15px; margin-bottom:15px; transition:transform 0.2s; }
+        .product-card:hover { transform:translateY(-2px); box-shadow:0 5px 15px rgba(0,0,0,0.1); }
+        .product-name { font-size:1.2em; font-weight:bold; color:#2c3e50; }
+        .product-price { color:#e67e22; font-size:1.3em; font-weight:bold; margin:10px 0; }
+        .product-stock { color:#7f8c8d; font-size:0.9em; }
+        button { background:#3498db; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; }
+        button:hover { background:#2980b9; }
+        button:disabled { background:#bdc3c7; cursor:not-allowed; }
+        .cart-item { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e0e0e0; }
+        .cart-total { font-size:1.2em; font-weight:bold; text-align:right; margin:15px 0; padding-top:10px; border-top:2px solid #3498db; }
+        .checkout-btn { width:100%; background:#27ae60; font-size:1.1em; padding:12px; }
+        .checkout-btn:hover { background:#229954; }
+        .empty-cart { text-align:center; color:#7f8c8d; padding:20px; }
+        .error { background:#e74c3c; color:white; padding:10px; border-radius:5px; margin-bottom:15px; display:none; }
+        .success { background:#27ae60; color:white; padding:10px; border-radius:5px; margin-bottom:15px; display:none; }
+        @media (max-width:768px){ .main-content{flex-direction:column;} .cart{position:static;} }
+        .loading { text-align:center; padding:40px; color:#7f8c8d; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header><h1>🛍️ Tech Store</h1><p>Best products at best prices</p></header>
+    <div class="stats">
+        <div class="stat-card"><div class="stat-number" id="productCount">-</div><div>Products</div></div>
+        <div class="stat-card"><div class="stat-number" id="orderCount">-</div><div>Orders</div></div>
+        <div class="stat-card"><div class="stat-number" id="totalSales">-</div><div>Total Sales</div></div>
+    </div>
+    <div class="main-content">
+        <div class="products"><h2>Products</h2><div id="productsList"></div></div>
+        <div class="cart"><h2>Cart</h2><div id="cartItems"></div><div id="cartTotal" class="cart-total"></div><button id="checkoutBtn" class="checkout-btn">Checkout</button><div id="errorMsg" class="error"></div><div id="successMsg" class="success"></div></div>
+    </div>
+</div>
+<script>
+    let products = [];
+    let cart = [];
+    async function fetchProducts() {
+        try {
+            const response = await fetch('/api/products');
+            products = await response.json();
+            displayProducts();
+        } catch (error) { console.error(error); document.getElementById('productsList').innerHTML = '<div class="error">Failed to load products</div>'; }
+    }
+    function displayProducts() {
+        const container = document.getElementById('productsList');
+        if(products.length===0){ container.innerHTML='<div class="loading">No products available</div>'; return; }
+        container.innerHTML = products.map(p => `
+            <div class="product-card">
+                <div class="product-name">${escapeHtml(p.name)}</div>
+                <div class="product-price">$${p.price.toFixed(2)}</div>
+                <div class="product-stock">Stock: ${p.stock}</div>
+                <button onclick="addToCart(${p.id})" ${p.stock===0?'disabled':''}>${p.stock===0?'Out of stock':'Add to cart'}</button>
+            </div>
+        `).join('');
+    }
+    function addToCart(productId) {
+        const product = products.find(p=>p.id===productId);
+        if(!product) return;
+        const existing = cart.find(i=>i.id===productId);
+        if(existing) existing.quantity++;
+        else cart.push({id:product.id,name:product.name,price:product.price,quantity:1,maxStock:product.stock});
+        updateCart();
+    }
+    function updateCart() {
+        const cartContainer = document.getElementById('cartItems');
+        const totalContainer = document.getElementById('cartTotal');
+        if(cart.length===0){ cartContainer.innerHTML='<div class="empty-cart">Cart is empty</div>'; totalContainer.innerHTML=''; return; }
+        let total=0;
+        cartContainer.innerHTML = cart.map(item=>{
+            total+=item.price*item.quantity;
+            return `<div class="cart-item"><div><strong>${escapeHtml(item.name)}</strong><br><small>$${item.price.toFixed(2)} x ${item.quantity}</small></div><div><button onclick="updateQuantity(${item.id},-1)" ${item.quantity<=1?'disabled':''}>-</button><span style="margin:0 10px;">${item.quantity}</span><button onclick="updateQuantity(${item.id},1)" ${item.quantity>=item.maxStock?'disabled':''}>+</button><button onclick="removeFromCart(${item.id})" style="background:#e74c3c;margin-left:10px;">✖</button></div></div>`;
+        }).join('');
+        totalContainer.innerHTML = `Total: $${total.toFixed(2)}`;
+    }
+    function updateQuantity(productId, delta) {
+        const item = cart.find(i=>i.id===productId);
+        if(item){
+            const newQ = item.quantity+delta;
+            if(newQ>=1 && newQ<=item.maxStock){
+                item.quantity = newQ;
+                updateCart();
+            }
+        }
+    }
+    function removeFromCart(productId){ cart = cart.filter(i=>i.id!==productId); updateCart(); }
+    async function checkout() {
+        if(cart.length===0){ showError('Cart is empty'); return; }
+        const customerName = prompt('Enter your name:');
+        if(!customerName) return;
+        const customerEmail = prompt('Enter your email:');
+        if(!customerEmail) return;
+        const orderData = { customer_name:customerName, customer_email:customerEmail, items: cart.map(i=>({product_id:i.id, quantity:i.quantity})) };
+        try {
+            const response = await fetch('/api/orders', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(orderData) });
+            const result = await response.json();
+            if(response.ok){ showSuccess(`Order created! Order ID: ${result.order_id}`); cart=[]; updateCart(); fetchProducts(); fetchMetrics(); }
+            else showError(result.error || 'Order failed');
+        } catch(error){ console.error(error); showError('Server error'); }
+    }
+    async function fetchMetrics() {
+        try {
+            const response = await fetch('/api/metrics');
+            const metrics = await response.json();
+            document.getElementById('productCount').textContent = metrics.products;
+            document.getElementById('orderCount').textContent = metrics.orders;
+            document.getElementById('totalSales').textContent = `$${metrics.total_sales.toFixed(2)}`;
+        } catch(e){ console.error(e); }
+    }
+    function showError(msg){ const d=document.getElementById('errorMsg'); d.textContent=msg; d.style.display='block'; setTimeout(()=>d.style.display='none',5000); }
+    function showSuccess(msg){ const d=document.getElementById('successMsg'); d.textContent=msg; d.style.display='block'; setTimeout(()=>d.style.display='none',5000); }
+    function escapeHtml(text){ if(!text) return ''; const div=document.createElement('div'); div.textContent=text; return div.innerHTML; }
+    document.getElementById('checkoutBtn').addEventListener('click', checkout);
+    fetchProducts();
+    fetchMetrics();
+    setInterval(fetchMetrics, 30000);
+</script>
+</body>
+</html>

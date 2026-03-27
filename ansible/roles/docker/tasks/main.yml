@@ -1,0 +1,53 @@
+---
+- name: Install dependencies
+  apt:
+    name: [apt-transport-https, ca-certificates, curl, gnupg, lsb-release]
+    state: present
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    state: present
+- name: Add Docker repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+    state: present
+- name: Install Docker
+  apt:
+    name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
+    state: present
+    update_cache: yes
+- name: Start Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+- name: Add users to docker group
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop: [admin, ubuntu, ec2-user]
+  ignore_errors: yes
+- name: Configure Docker daemon
+  copy:
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {"max-size":"10m","max-file":"3"},
+        "storage-driver": "overlay2"
+      }
+    dest: /etc/docker/daemon.json
+  notify: restart docker
+- name: Install Docker Python module
+  pip:
+    name: [docker, docker-compose]
+    state: present
+- name: Create network
+  docker_network:
+    name: app-network
+    driver: bridge
+handlers:
+  - name: restart docker
+    service:
+      name: docker
+      state: restarted

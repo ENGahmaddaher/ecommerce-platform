@@ -1,0 +1,33 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+- name: Install basic packages
+  apt:
+    name: [curl, wget, git, vim, htop, net-tools, ca-certificates, gnupg, lsb-release, python3-pip]
+    state: present
+- name: Upgrade packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+- name: Set timezone
+  timezone:
+    name: "{{ timezone | default('UTC') }}"
+- name: Configure sysctl
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: 'net.ipv4.tcp_tw_reuse', value: 1 }
+    - { name: 'net.ipv4.tcp_fin_timeout', value: 15 }
+    - { name: 'net.core.somaxconn', value: 1024 }
+- name: Increase file limits
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: "{{ item }}"
+  loop:
+    - '* soft nofile 65536'
+    - '* hard nofile 65536'

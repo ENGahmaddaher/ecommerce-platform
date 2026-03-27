@@ -1,0 +1,48 @@
+---
+- name: Configure Bastion Host
+  hosts: bastion
+  become: yes
+  roles:
+    - common
+    - docker
+  tasks:
+    - name: Install monitoring tools
+      apt:
+        name: [htop, iotop, nload, tmux, git, vim, curl, wget, jq, awscli]
+        state: present
+        update_cache: yes
+    - name: Configure SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^MaxAuthTries', line: 'MaxAuthTries 3' }
+      notify: restart sshd
+    - name: Create admin user
+      user:
+        name: admin
+        groups: sudo
+        shell: /bin/bash
+        append: yes
+    - name: Add SSH keys (example - replace with actual keys)
+      authorized_key:
+        user: admin
+        key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC..."  # replace
+    - name: Enable firewall
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: [22, 80, 443]
+    - name: Enable ufw
+      ufw:
+        state: enabled
+        policy: deny
+  handlers:
+    - name: restart sshd
+      service:
+        name: ssh
+        state: restarted

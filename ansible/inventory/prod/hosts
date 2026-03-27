@@ -1,0 +1,10 @@
+[bastion]
+bastion-prod ansible_host=<BASTION_IP> ansible_user=admin
+
+[app_servers]
+app-prod-1 ansible_host=<APP_IP_1> ansible_user=admin
+app-prod-2 ansible_host=<APP_IP_2> ansible_user=admin
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+environment=prod
