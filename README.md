@@ -73,26 +73,36 @@ make deploy ENV=prod     # deploys to production environment
 Makefile Commands
 
 Command	Description
-
-make help	Show available commands
-
-make deploy ENV=dev	Full deployment (build, push, terraform apply, health check)
-
-make tf-apply	Apply Terraform changes for current ENV
-
-make build-push	Build Docker images and push to ECR
-
-make ansible-bastion	Configure Bastion host
-
-make ansible-app	Configure application servers (needs Terraform outputs)
-
-make backup	Run database backup for current ENV
-
-make health	Run health check
-
-make monitor	Run system monitoring script
-
-make clean	Remove temporary files
+```bash
+make help	#Show available commands
+```
+```bash
+make deploy ENV=dev	#Full deployment (build, push, terraform apply, health check)
+```
+```bash
+make tf-apply	#Apply Terraform changes for current ENV
+```
+```bash
+make build-push	#Build Docker images and push to ECR
+```
+```bash
+make ansible-bastion	#Configure Bastion host
+```
+```bash
+make ansible-app	#Configure application servers (needs Terraform outputs)
+```
+```bash
+make backup	#Run database backup for current ENV
+```
+```bash
+make health	#Run health check
+```
+```bash
+make monitor	#Run system monitoring script
+```
+```bash
+make clean	#Remove temporary files
+```
 
 Environment Variables
 
